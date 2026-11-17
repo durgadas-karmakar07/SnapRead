@@ -129,4 +129,55 @@ describe("SnapRead API routes", () => {
     assert.equal(body.error.code, "UPSTREAM_HTTP_ERROR");
     assert.equal(body.error.message, "Blocked by target site.");
   });
+
+  it("POST /api/summarize lets session header key override an existing env key", async () => {
+    let usedKey = "";
+    const overrideApp = createApp({
+      getConfig: () => ({
+        geminiApiKey: "revoked-env-key",
+        geminiModel: "gemini-3.5-flash-lite",
+      }),
+      fetchPage: async (url): Promise<PageContent> => ({
+        url,
+        finalUrl: url,
+        title: "Test",
+        description: "",
+        siteName: "example.com",
+        visibleText: "Example page text long enough to summarize cleanly.",
+        wordCount: 8,
+        truncated: false,
+      }),
+      summarize: async (_page, apiKey): Promise<SummaryResult> => {
+        usedKey = apiKey;
+        return {
+          headline: "Override Works",
+          summary: "Header key overrides an invalid server key.",
+          keyPoints: ["Session key works immediately."],
+          topics: ["Testing"],
+          readingTimeMinutes: 1,
+        };
+      },
+    });
+
+    const srv = await new Promise<ReturnType<typeof overrideApp.listen>>((resolve) => {
+      const s = overrideApp.listen(0, "127.0.0.1", () => resolve(s));
+    });
+    try {
+      const addr = srv.address() as AddressInfo;
+      const res = await fetch(`http://127.0.0.1:${addr.port}/api/summarize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gemini-Api-Key": "fresh-session-key",
+        },
+        body: JSON.stringify({ url: "https://example.com" }),
+      });
+      assert.equal(res.status, 200);
+      assert.equal(usedKey, "fresh-session-key");
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        srv.close((err) => (err ? reject(err) : resolve()))
+      );
+    }
+  });
 });

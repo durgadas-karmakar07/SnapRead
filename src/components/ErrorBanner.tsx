@@ -44,8 +44,9 @@ export function ErrorBanner({
       {needsApiKey ? (
         <form className="key-setup-box" onSubmit={handleKeySubmit}>
           <p className="key-setup-note">
-            Set <code>GEMINI_API_KEY</code> in your project <code>.env</code> file and restart the
-            server, or paste a Gemini API key below for this browser session only:
+            {code === "INVALID_API_KEY"
+              ? "Update GEMINI_API_KEY in your hosting environment variables (e.g. Netlify) or local .env with a fresh Google AI Studio key, or paste a working key below for this browser session:"
+              : "Set GEMINI_API_KEY in your hosting environment variables (e.g. Netlify) or local .env, or paste a Gemini API key below for this browser session only:"}
           </p>
           <div className="key-input-row">
             <label htmlFor="session-api-key" className="visually-hidden">

@@ -56,7 +56,7 @@ export async function executeSummarizePipeline(params: {
   }
 
   const { geminiApiKey, geminiModel } = getConfig();
-  const apiKey = geminiApiKey || (params.headerKey ?? "").trim();
+  const apiKey = (params.headerKey ?? "").trim() || geminiApiKey;
 
   if (!apiKey) {
     return {
