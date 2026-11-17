@@ -10,7 +10,7 @@ export function getHealthStatus(
   const { geminiApiKey, geminiModel } = getConfig();
   return {
     ok: true,
-    aiConfigured: Boolean(geminiApiKey),
-    model: geminiModel,
+    aiConfigured: true,
+    model: geminiApiKey ? geminiModel : "extractive-nlp (free)",
   };
 }

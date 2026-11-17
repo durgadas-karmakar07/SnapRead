@@ -83,16 +83,21 @@ describe("SnapRead API routes", () => {
     assert.equal(body.error.code, "INVALID_URL");
   });
 
-  it("POST /api/summarize returns MISSING_API_KEY when no key is configured or sent", async () => {
+  it("POST /api/summarize falls back to built-in free extractive NLP when no key is configured", async () => {
     mockConfiguredKey = "";
     const res = await fetch(`${baseUrl}/api/summarize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: "https://example.com/article" }),
     });
-    assert.equal(res.status, 400);
-    const body = (await res.json()) as { error: { code: string } };
-    assert.equal(body.error.code, "MISSING_API_KEY");
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as {
+      summary: { headline: string; summary: string; keyPoints: string[] };
+      meta: { model: string };
+    };
+    assert.equal(body.meta.model, "extractive-nlp (free)");
+    assert.ok(body.summary.summary.length > 10);
+    assert.ok(body.summary.keyPoints.length >= 1);
   });
 
   it("POST /api/summarize accepts session header key when env key is unset", async () => {

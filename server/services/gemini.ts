@@ -13,6 +13,12 @@ export class GeminiServiceError extends Error {
   }
 }
 
+export const FREE_TIER_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemma-4-26b-a4b-it",
+  "gemini-2.5-flash-lite",
+] as const;
+
 const SUMMARY_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -132,62 +138,72 @@ export async function summarizePageContent(
     .filter(Boolean)
     .join("\n");
 
-  try {
-    const response = await client.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        systemInstruction:
-          "You are SnapRead, an accurate editorial summarizer. Summarize ONLY facts present in the provided webpage text. Keep the summary concise (2-4 sentences), list 3-5 clear bullet takeaways, avoid hype or speculation, and return valid JSON matching the schema.",
-        responseMimeType: "application/json",
-        responseJsonSchema: SUMMARY_SCHEMA,
-        maxOutputTokens: 1024,
-        abortSignal: signal,
-      },
-    });
+  const candidateModels = [
+    model,
+    ...FREE_TIER_MODELS.filter((candidate) => candidate !== model),
+  ];
 
-    const outputText = response.text;
-    if (!outputText) {
-      throw new GeminiServiceError(
-        "EMPTY_AI_RESPONSE",
-        "Gemini returned an empty response for this webpage.",
-        502
-      );
+  let lastError: unknown = null;
+
+  for (const candidateModel of candidateModels) {
+    try {
+      const response = await client.models.generateContent({
+        model: candidateModel,
+        contents: prompt,
+        config: {
+          systemInstruction:
+            "You are SnapRead, an accurate editorial summarizer. Summarize ONLY facts present in the provided webpage text. Keep the summary concise (2-4 sentences), list 3-5 clear bullet takeaways, avoid hype or speculation, and return valid JSON matching the schema.",
+          responseMimeType: "application/json",
+          responseJsonSchema: SUMMARY_SCHEMA,
+          maxOutputTokens: 1024,
+          abortSignal: signal,
+        },
+      });
+
+      const outputText = response.text;
+      if (!outputText) {
+        throw new GeminiServiceError(
+          "EMPTY_AI_RESPONSE",
+          "Gemini returned an empty response for this webpage.",
+          502
+        );
+      }
+
+      return parseSummaryPayload(outputText, page.wordCount);
+    } catch (error) {
+      lastError = error;
+
+      if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) {
+        throw new GeminiServiceError("REQUEST_ABORTED", "Request was cancelled.", 499);
+      }
+
+      const { status, message } = extractReadableErrorMessage(error);
+      const lower = message.toLowerCase();
+
+      if (status === 401 || status === 403 || lower.includes("api key") || lower.includes("permission")) {
+        throw new GeminiServiceError(
+          "INVALID_API_KEY",
+          "Gemini rejected the API key. Check that your GEMINI_API_KEY is valid and enabled.",
+          401
+        );
+      }
     }
+  }
 
-    return parseSummaryPayload(outputText, page.wordCount);
-  } catch (error) {
-    if (error instanceof GeminiServiceError) {
-      throw error;
-    }
+  const { status, message } = extractReadableErrorMessage(lastError);
+  const lower = message.toLowerCase();
 
-    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) {
-      throw new GeminiServiceError("REQUEST_ABORTED", "Request was cancelled.", 499);
-    }
-
-    const { status, message } = extractReadableErrorMessage(error);
-    const lower = message.toLowerCase();
-
-    if (status === 401 || status === 403 || lower.includes("api key") || lower.includes("permission")) {
-      throw new GeminiServiceError(
-        "INVALID_API_KEY",
-        "Gemini rejected the API key. Check that your GEMINI_API_KEY is valid and enabled.",
-        401
-      );
-    }
-
-    if (status === 429 || lower.includes("quota") || lower.includes("rate limit")) {
-      throw new GeminiServiceError(
-        "RATE_LIMITED",
-        "Gemini API rate limit reached. Please wait a few seconds and try again.",
-        429
-      );
-    }
-
+  if (status === 429 || lower.includes("quota") || lower.includes("rate limit")) {
     throw new GeminiServiceError(
-      "AI_GENERATION_FAILED",
-      `Failed to generate summary with Gemini (${model}): ${message}`,
-      502
+      "RATE_LIMITED",
+      "Gemini API rate limit reached across free-tier models.",
+      429
     );
   }
+
+  throw new GeminiServiceError(
+    "AI_GENERATION_FAILED",
+    `Failed to generate summary with Gemini (${model}): ${message}`,
+    502
+  );
 }

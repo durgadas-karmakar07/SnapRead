@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { summarizeWithExtractiveNlp } from "./extractive.js";
 import { FetchPageError, fetchPublicPage } from "./fetcher.js";
 import { GeminiServiceError, summarizePageContent } from "./gemini.js";
 export { getHealthStatus } from "./health.js";
@@ -58,22 +59,30 @@ export async function executeSummarizePipeline(params: {
   const { geminiApiKey, geminiModel } = getConfig();
   const apiKey = (params.headerKey ?? "").trim() || geminiApiKey;
 
-  if (!apiKey) {
-    return {
-      status: 400,
-      body: {
-        error: {
-          code: "MISSING_API_KEY",
-          message:
-            "Gemini API key is not configured. Add GEMINI_API_KEY to your environment variables or provide a temporary session key below.",
-        },
-      },
-    };
-  }
-
   try {
     const page = await fetchPage(rawUrl, params.signal);
-    const summary = await summarize(page, apiKey, geminiModel, params.signal);
+
+    let summary: SummaryResult;
+    let activeModel = geminiModel;
+
+    if (!apiKey) {
+      summary = summarizeWithExtractiveNlp(page);
+      activeModel = "extractive-nlp (free)";
+    } else {
+      try {
+        summary = await summarize(page, apiKey, geminiModel, params.signal);
+      } catch (aiError) {
+        if (
+          aiError instanceof GeminiServiceError &&
+          aiError.code === "REQUEST_ABORTED"
+        ) {
+          throw aiError;
+        }
+        // Seamless zero-cost fallback when API key is expired/revoked or free-tier quota is exhausted
+        summary = summarizeWithExtractiveNlp(page);
+        activeModel = "extractive-nlp (free)";
+      }
+    }
 
     const excerpt =
       page.visibleText.length > 1800
@@ -93,7 +102,7 @@ export async function executeSummarizePipeline(params: {
         },
         summary,
         meta: {
-          model: geminiModel,
+          model: activeModel,
           durationMs: Date.now() - startedAt,
         },
       },
