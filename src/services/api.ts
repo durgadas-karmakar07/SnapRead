@@ -64,8 +64,11 @@ export async function summarizeUrl(
     }
 
     const code = payload?.error?.code || "REQUEST_FAILED";
-    const message =
-      payload?.error?.message || `Request failed with status ${response.status}.`;
+    const fallbackMessage =
+      response.status === 504
+        ? "The server timed out while fetching or summarizing that page. Please try again."
+        : `Request failed with status ${response.status}.`;
+    const message = payload?.error?.message || fallbackMessage;
     throw new ApiClientError(code, message, response.status);
   }
 
