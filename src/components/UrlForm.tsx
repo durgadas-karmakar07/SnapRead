@@ -1,3 +1,4 @@
+import { AlertCircle, ArrowRight, Globe, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface UrlFormProps {
@@ -5,21 +6,6 @@ interface UrlFormProps {
   isLoading: boolean;
   onSubmitUrl: (normalizedUrl: string) => void;
 }
-
-const SAMPLE_URLS = [
-  {
-    label: "Web Accessibility (MDN)",
-    url: "https://developer.mozilla.org/en-US/docs/Web/Accessibility",
-  },
-  {
-    label: "React Docs",
-    url: "https://react.dev/learn",
-  },
-  {
-    label: "Wikipedia: Artificial Intelligence",
-    url: "https://en.wikipedia.org/wiki/Artificial_intelligence",
-  },
-];
 
 function normalizeCandidateUrl(raw: string): string {
   const trimmed = raw.trim();
@@ -36,7 +22,7 @@ function validatePublicUrl(raw: string): { valid: boolean; normalized: string; e
     return {
       valid: false,
       normalized: "",
-      error: "Enter a webpage URL to summarize (for example, https://example.com).",
+      error: "Enter a webpage URL to summarize (for example, https://react.dev/learn).",
     };
   }
 
@@ -48,7 +34,7 @@ function validatePublicUrl(raw: string): { valid: boolean; normalized: string; e
     return {
       valid: false,
       normalized,
-      error: "That does not look like a valid URL. Include a domain like example.com.",
+      error: "Enter a valid web address with a domain like react.dev/learn.",
     };
   }
 
@@ -85,6 +71,33 @@ export function UrlForm({ initialUrl = "", isLoading, onSubmitUrl }: UrlFormProp
   }, [initialUrl]);
 
   useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      inputRef.current?.focus();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     return () => {
       window.clearTimeout(announceTimerRef.current);
     };
@@ -98,7 +111,7 @@ export function UrlForm({ initialUrl = "", isLoading, onSubmitUrl }: UrlFormProp
     setLiveAnnouncement("");
     if (!message) return;
     announceTimerRef.current = window.setTimeout(() => {
-      setLiveAnnouncement(`Website URL: ${message}`);
+      setLiveAnnouncement(`Source URL: ${message}`);
     }, 350);
   }
 
@@ -168,33 +181,28 @@ export function UrlForm({ initialUrl = "", isLoading, onSubmitUrl }: UrlFormProp
     inputRef.current?.focus();
   }
 
-  function handlePickExample(exampleUrl: string) {
-    if (isLoading) return;
-    setValue(exampleUrl);
-    setHasInteracted(false);
-    setValidationError("");
-    setLiveAnnouncement("");
-    inputRef.current?.setCustomValidity("");
-    onSubmitUrl(exampleUrl);
-  }
-
   return (
-    <section className="url-panel" aria-labelledby="url-form-heading">
+    <section className="command-card" aria-labelledby="url-form-heading">
       <h2 id="url-form-heading" className="visually-hidden">
         Summarize a webpage by URL
       </h2>
 
       <form className="url-form" onSubmit={handleSubmit} noValidate>
         <div className="field-group">
-          <label htmlFor="url-input" className="field-label">
-            Webpage URL <span aria-hidden="true">*</span>
-          </label>
-          <span id="url-hint" className="field-hint">
-            Enter any public http:// or https:// webpage address
-          </span>
+          <div className="field-header-row">
+            <label htmlFor="url-input" className="field-label">
+              Source URL <span aria-hidden="true">*</span>
+            </label>
+            <span id="url-hint" className="field-hint">
+              Any public http:// or https:// webpage
+            </span>
+          </div>
 
           <div className="input-row">
             <div className={`input-shell ${showError ? "is-invalid" : ""}`}>
+              <span className="input-leading-icon" aria-hidden="true">
+                <Globe size={16} strokeWidth={1.5} />
+              </span>
               <input
                 ref={inputRef}
                 id="url-input"
@@ -221,9 +229,13 @@ export function UrlForm({ initialUrl = "", isLoading, onSubmitUrl }: UrlFormProp
                   aria-label="Clear URL"
                   onClick={handleClear}
                 >
-                  <span aria-hidden="true">×</span>
+                  <X size={16} strokeWidth={1.5} aria-hidden="true" />
                 </button>
-              ) : null}
+              ) : (
+                <kbd className="shortcut-keycap" aria-hidden="true">
+                  /
+                </kbd>
+              )}
             </div>
 
             <button
@@ -231,35 +243,17 @@ export function UrlForm({ initialUrl = "", isLoading, onSubmitUrl }: UrlFormProp
               className="primary-btn"
               disabled={isLoading}
             >
-              {isLoading ? "Summarizing…" : "Summarize"}
+              <span>{isLoading ? "Summarizing" : "Summarize"}</span>
+              <ArrowRight size={16} strokeWidth={1.5} aria-hidden="true" />
             </button>
           </div>
 
           <div id="url-error" className="field-error" hidden={!showError}>
-            <span role="img" aria-label="Error">
-              ⚠
-            </span>{" "}
+            <AlertCircle size={16} strokeWidth={1.5} aria-hidden="true" />
             <span>{validationError}</span>
           </div>
         </div>
       </form>
-
-      <div className="examples-row">
-        <span className="examples-label">Try an example:</span>
-        <div className="example-pills">
-          {SAMPLE_URLS.map((item) => (
-            <button
-              key={item.url}
-              type="button"
-              className="example-pill"
-              disabled={isLoading}
-              onClick={() => handlePickExample(item.url)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="visually-hidden" aria-live="polite">
         {liveAnnouncement}

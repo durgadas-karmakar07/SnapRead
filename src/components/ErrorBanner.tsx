@@ -1,3 +1,4 @@
+import { AlertCircle, Eye, EyeOff, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 interface ErrorBannerProps {
@@ -28,10 +29,10 @@ export function ErrorBanner({
   }
 
   return (
-    <section className="status-card error-card" role="alert" aria-labelledby="error-heading">
+    <section className="sheet-card error-card" role="alert" aria-labelledby="error-heading">
       <div className="error-header">
-        <span className="error-badge" role="img" aria-label="Error">
-          !
+        <span className="error-icon" aria-hidden="true">
+          <AlertCircle size={18} strokeWidth={1.5} />
         </span>
         <div className="error-body">
           <h2 id="error-heading" className="error-title">
@@ -68,17 +69,23 @@ export function ErrorBanner({
               aria-pressed={showKey}
               onClick={() => setShowKey((prev) => !prev)}
             >
-              {showKey ? "Hide" : "Show"}
+              {showKey ? (
+                <EyeOff size={16} strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <Eye size={16} strokeWidth={1.5} aria-hidden="true" />
+              )}
+              <span>{showKey ? "Hide" : "Show"}</span>
             </button>
             <button type="submit" className="primary-btn">
-              Apply &amp; Retry
+              Apply &amp; retry
             </button>
           </div>
         </form>
       ) : onRetry ? (
         <div className="error-actions">
           <button type="button" className="secondary-btn" onClick={onRetry}>
-            Try again
+            <RotateCcw size={16} strokeWidth={1.5} aria-hidden="true" />
+            <span>Try again</span>
           </button>
         </div>
       ) : null}

@@ -1,0 +1,14 @@
+{
+  "name": "unslop",
+  "displayName": "Unslop",
+  "description": "Turns vibecoded, AI-looking UI into a designed interface with its own character across nine ordered passes (by Damir Sokolovsky).",
+  "author": {
+    "name": "Damir Sokolovsky",
+    "url": "https://x.com/heydamir"
+  },
+  "homepage": "https://github.com/heydamir/unslop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/heydamir/unslop"
+  }
+}

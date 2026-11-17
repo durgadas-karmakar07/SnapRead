@@ -1,9 +1,12 @@
+import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { Header } from "./components/Header";
 import { LoadingCard } from "./components/LoadingCard";
+import { Sidebar } from "./components/Sidebar";
 import { SummaryCard } from "./components/SummaryCard";
 import { UrlForm } from "./components/UrlForm";
+import { SAMPLE_BRIEF } from "./data/sampleBrief";
 import { ApiClientError, fetchHealth, summarizeUrl } from "./services/api";
 import type { HealthResponse, SummarizeResponse } from "./types/summary";
 
@@ -62,7 +65,7 @@ export function App() {
     fetchHealth(controller.signal)
       .then((data) => setHealth(data))
       .catch(() => {
-        // Health check failure is non-blocking; /api/summarize will surface real errors if backend is offline.
+        // Health check failure is non-blocking; /api/summarize surfaces live API errors.
       });
     return () => controller.abort();
   }, []);
@@ -70,7 +73,7 @@ export function App() {
   useEffect(() => {
     document.title = summary
       ? `${summary.summary.headline} — SnapRead`
-      : "SnapRead — AI Website Summariser";
+      : "SnapRead — Webpage Summariser";
   }, [summary]);
 
   useEffect(() => {
@@ -97,7 +100,7 @@ export function App() {
       setSummary(result);
       setHistory((prev) => {
         const filtered = prev.filter((item) => item.page.url !== result.page.url);
-        return [result, ...filtered].slice(0, 5);
+        return [result, ...filtered].slice(0, 6);
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -147,6 +150,9 @@ export function App() {
   }
 
   const keyMissingOnServer = health !== null && !health.aiConfigured && !sessionApiKey;
+  const activeBrief = summary ?? SAMPLE_BRIEF;
+  const isShowingSample = summary === null;
+  const activeUrl = isLoading ? currentUrl : summary?.page.url ?? "";
 
   return (
     <div className="app-shell">
@@ -158,130 +164,127 @@ export function App() {
         theme={activeTheme}
         onToggleTheme={handleToggleTheme}
         modelName={health?.model || "gemini-3.5-flash-lite"}
+        aiConfigured={health?.aiConfigured ?? null}
       />
 
-      <main className="main-content">
-        <section className="hero">
-          <h1 id="main-heading" tabIndex={-1} className="hero-title">
-            Turn any public webpage into a crisp brief.
-          </h1>
-          <p className="hero-subtitle">
-            Paste a link below. SnapRead extracts the visible text and uses Gemini to distill the
-            core message and key takeaways.
-          </p>
-        </section>
-
-        <UrlForm
-          initialUrl={currentUrl}
+      <div className="workspace-grid">
+        <Sidebar
+          activeUrl={activeUrl}
           isLoading={isLoading}
-          onSubmitUrl={(url) => void runSummarize(url)}
+          history={history}
+          onSelectQuickSource={(url) => void runSummarize(url)}
+          onSelectHistory={(item) => {
+            setError(null);
+            setSummary(item);
+            setCurrentUrl(item.page.url);
+          }}
         />
 
-        {keyMissingOnServer && !error ? (
-          <div className="setup-hint-bar">
-            <p className="setup-hint-text">
-              <code>GEMINI_API_KEY</code> is not set in <code>.env</code> yet.{" "}
-              <button
-                type="button"
-                className="inline-link-btn"
-                aria-expanded={showKeyDrawer}
-                aria-controls="quick-key-drawer"
-                onClick={() => setShowKeyDrawer((prev) => !prev)}
-              >
-                {showKeyDrawer ? "Hide session key input" : "Use a temporary session key"}
-              </button>
+        <main className="main-content">
+          <section className="workspace-header">
+            <h1 id="main-heading" tabIndex={-1} className="page-title">
+              Webpage brief
+            </h1>
+            <p className="page-subtitle">
+              Fetch visible text from any public URL and distill it into a structured brief with Gemini
             </p>
-            {showKeyDrawer ? (
-              <form
-                id="quick-key-drawer"
-                className="quick-key-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (draftKey.trim()) {
-                    setSessionApiKey(draftKey.trim());
-                    setShowKeyDrawer(false);
-                  }
-                }}
-              >
-                <label htmlFor="header-session-key" className="visually-hidden">
-                  Temporary Gemini API key
-                </label>
-                <input
-                  id="header-session-key"
-                  type={showDraftKey ? "text" : "password"}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="Paste Gemini API key (session only)"
-                  value={draftKey}
-                  onChange={(e) => setDraftKey(e.target.value)}
-                />
+          </section>
+
+          <UrlForm
+            initialUrl={currentUrl}
+            isLoading={isLoading}
+            onSubmitUrl={(url) => void runSummarize(url)}
+          />
+
+          {keyMissingOnServer && !error ? (
+            <div className="setup-hint-bar">
+              <p className="setup-hint-text">
+                <code>GEMINI_API_KEY</code> is not configured in the server environment yet.{" "}
                 <button
                   type="button"
-                  className="secondary-btn"
-                  aria-pressed={showDraftKey}
-                  onClick={() => setShowDraftKey((prev) => !prev)}
+                  className="inline-link-btn"
+                  aria-expanded={showKeyDrawer}
+                  aria-controls="quick-key-drawer"
+                  onClick={() => setShowKeyDrawer((prev) => !prev)}
                 >
-                  {showDraftKey ? "Hide" : "Show"}
+                  {showKeyDrawer ? "Hide session key input" : "Use a session key"}
                 </button>
-                <button type="submit" className="primary-btn">
-                  Save for session
-                </button>
-              </form>
-            ) : null}
-          </div>
-        ) : null}
+              </p>
+              {showKeyDrawer ? (
+                <form
+                  id="quick-key-drawer"
+                  className="quick-key-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (draftKey.trim()) {
+                      setSessionApiKey(draftKey.trim());
+                      setShowKeyDrawer(false);
+                    }
+                  }}
+                >
+                  <label htmlFor="header-session-key" className="visually-hidden">
+                    Temporary Gemini API key
+                  </label>
+                  <input
+                    id="header-session-key"
+                    type={showDraftKey ? "text" : "password"}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="Paste Gemini API key (session only)"
+                    value={draftKey}
+                    onChange={(e) => setDraftKey(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    aria-pressed={showDraftKey}
+                    onClick={() => setShowDraftKey((prev) => !prev)}
+                  >
+                    {showDraftKey ? (
+                      <EyeOff size={16} strokeWidth={1.5} aria-hidden="true" />
+                    ) : (
+                      <Eye size={16} strokeWidth={1.5} aria-hidden="true" />
+                    )}
+                    <span>{showDraftKey ? "Hide" : "Show"}</span>
+                  </button>
+                  <button type="submit" className="primary-btn">
+                    Save for session
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
 
-        {isLoading ? (
-          <LoadingCard targetUrl={currentUrl} onCancel={handleCancel} />
-        ) : null}
+          {isLoading ? (
+            <LoadingCard targetUrl={currentUrl} onCancel={handleCancel} />
+          ) : null}
 
-        {!isLoading && error ? (
-          <ErrorBanner
-            code={error.code}
-            message={error.message}
-            sessionApiKey={sessionApiKey}
-            onSaveSessionApiKey={handleApplySessionKey}
-            onRetry={
-              error.targetUrl ? () => void runSummarize(error.targetUrl) : undefined
-            }
-          />
-        ) : null}
+          {!isLoading && error ? (
+            <ErrorBanner
+              code={error.code}
+              message={error.message}
+              sessionApiKey={sessionApiKey}
+              onSaveSessionApiKey={handleApplySessionKey}
+              onRetry={
+                error.targetUrl ? () => void runSummarize(error.targetUrl) : undefined
+              }
+            />
+          ) : null}
 
-        {!isLoading && !error && summary ? <SummaryCard data={summary} /> : null}
-
-        {history.length > 1 ? (
-          <section className="history-strip" aria-labelledby="history-heading">
-            <h2 id="history-heading" className="history-heading">
-              Recent in this session
-            </h2>
-            <ul className="history-list" role="list">
-              {history.map((item) => {
-                const isActive = summary?.page.url === item.page.url;
-                return (
-                  <li key={item.page.url}>
-                    <button
-                      type="button"
-                      className={`history-chip ${isActive ? "is-active" : ""}`}
-                      aria-pressed={isActive}
-                      onClick={() => {
-                        setError(null);
-                        setSummary(item);
-                        setCurrentUrl(item.page.url);
-                      }}
-                    >
-                      <span className="history-site">{item.page.siteName}</span>
-                      <span className="history-title">{item.summary.headline}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ) : null}
-      </main>
+          {!isLoading && !error ? (
+            <SummaryCard
+              data={activeBrief}
+              isSample={isShowingSample}
+              onRunSampleLive={(url) => void runSummarize(url)}
+            />
+          ) : null}
+        </main>
+      </div>
 
       <footer className="site-footer">
-        <p>SnapRead fetches visible webpage text server-side and summarizes with Gemini.</p>
+        <div className="footer-inner">
+          <p>SnapRead extracts visible webpage text server-side and summarizes with Gemini</p>
+        </div>
       </footer>
     </div>
   );
