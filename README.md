@@ -4,6 +4,8 @@ Paste any public URL. SnapRead fetches the page on the server, keeps only the te
 
 Built for **INT. (Indus Net Technologies) — Angular / React assignment 1: AI-Driven Website Summariser Web App.**
 
+**Live demo:** https://snapread01.netlify.app — no sign-up needed; paste any article URL and press **Summarize**.
+
 **Stack:** React 19 · TypeScript · Vite · Node.js / Express 5 · Google Gemini (`@google/genai`) · cheerio · Netlify Functions · Playwright
 
 ![SnapRead summary view](docs/screenshots/summary-light.png)
@@ -169,6 +171,8 @@ Errors always use `{ "error": { "code": "...", "message": "..." } }`:
 
 ## Deploying to Netlify
 
+The live demo at https://snapread01.netlify.app is deployed this way.
+
 `netlify.toml` builds the app, publishes `dist/`, maps `/api/health` and `/api/summarize` to the functions in `netlify/functions/` and sets the security headers.
 
 1. Push the repository to GitHub (never commit `.env`).
@@ -229,4 +233,4 @@ Screenshots were captured from the production build using the E2E fixture articl
 
 ---
 
-**Author:** Durga Das Karmakar · B.Tech (IT), Bengal College of Engineering & Technology · [GitHub](https://github.com/durgadas-karmakar07)
+**Author:** Durga Das Karmakar · B.Tech (IT), Bengal College of Engineering & Technology · [GitHub](https://github.com/durgadas-karmakar07) · [LinkedIn](https://www.linkedin.com/in/durgadas-karmakar-60ab70429)
