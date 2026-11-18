@@ -1,4 +1,4 @@
-import { ArrowUpRight, ChevronDown, Play } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Info, Play } from "lucide-react";
 import type { SummarizeResponse } from "../types/summary";
 import { CopyButton } from "./CopyButton";
 
@@ -100,6 +100,13 @@ export function SummaryCard({
       </header>
 
       <div className="summary-body">
+        {!isSample && meta.notice ? (
+          <p className="fallback-notice" role="note">
+            <Info size={16} strokeWidth={1.5} aria-hidden="true" />
+            <span>{meta.notice}</span>
+          </p>
+        ) : null}
+
         <section className="summary-section" aria-labelledby="tldr-heading">
           <h3 id="tldr-heading" className="section-heading">
             Summary

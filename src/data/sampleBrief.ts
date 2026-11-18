@@ -52,6 +52,7 @@ export const SAMPLE_BRIEF: SummarizeResponse = {
   },
   meta: {
     model: "gemini-3.5-flash-lite",
+    provider: "gemini",
     durationMs: 1850,
   },
 };

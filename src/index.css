@@ -74,8 +74,8 @@
   --radius-xl: 1rem;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Inter Variable", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-serif: "Newsreader Variable", "Newsreader", "Iowan Old Style", Georgia, serif;
   --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
@@ -695,6 +695,11 @@ body {
 
 .field-error svg {
   flex: none;
+}
+
+/* `display: flex` above would otherwise override the hidden attribute. */
+.field-error[hidden] {
+  display: none;
 }
 
 @media (pointer: coarse) {
@@ -1318,4 +1323,24 @@ progress.loading-spinner:indeterminate {
   .summary-prose-wrap {
     border-inline-start-color: Highlight;
   }
+}
+
+/* Shown when the brief came from the offline fallback instead of Gemini */
+.fallback-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+}
+
+.fallback-notice svg {
+  flex: none;
+  margin-block-start: 0.125rem;
 }

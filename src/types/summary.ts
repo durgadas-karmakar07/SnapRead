@@ -18,7 +18,10 @@ export interface SummarizeResponse {
   summary: SummaryResult;
   meta: {
     model: string;
+    provider: "gemini" | "extractive";
     durationMs: number;
+    /** Present when the brief came from the offline fallback instead of Gemini. */
+    notice?: string;
   };
 }
 

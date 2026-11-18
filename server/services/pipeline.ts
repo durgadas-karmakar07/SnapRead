@@ -1,14 +1,35 @@
 import { config } from "../config.js";
-import { summarizeWithExtractiveNlp } from "./extractive.js";
+import { EXTRACTIVE_MODEL_LABEL, summarizeWithExtractiveNlp } from "./extractive.js";
 import { FetchPageError, fetchPublicPage } from "./fetcher.js";
 import { GeminiServiceError, summarizePageContent } from "./gemini.js";
+import { createRateLimiter, rateLimitedBody, type RateLimiter } from "./rateLimit.js";
 export { getHealthStatus } from "./health.js";
 import type {
   ApiErrorResponse,
   PageContent,
   SummarizeSuccessResponse,
+  SummaryProvider,
   SummaryResult,
 } from "../types/summary.js";
+
+/** Shared limiter for this server instance (per client IP, one-minute window). */
+export const defaultRateLimiter = createRateLimiter({
+  limit: config.rateLimitPerMinute,
+  windowMs: 60_000,
+});
+
+function fallbackNotice(reason: "no-key" | unknown): string {
+  if (reason === "no-key") {
+    return "No Gemini API key is configured, so this brief was produced by SnapRead's offline extractive summariser.";
+  }
+  if (reason instanceof GeminiServiceError && reason.code === "INVALID_API_KEY") {
+    return "Gemini rejected the API key, so this brief was produced by SnapRead's offline extractive summariser.";
+  }
+  if (reason instanceof GeminiServiceError && reason.code === "RATE_LIMITED") {
+    return "Gemini's free-tier limit was reached, so this brief was produced by SnapRead's offline extractive summariser.";
+  }
+  return "Gemini was unavailable for this request, so this brief was produced by SnapRead's offline extractive summariser.";
+}
 
 export interface SummarizePipelineDeps {
   fetchPage?: (url: string, signal?: AbortSignal) => Promise<PageContent>;
@@ -19,16 +40,20 @@ export interface SummarizePipelineDeps {
     signal?: AbortSignal
   ) => Promise<SummaryResult>;
   getConfig?: () => { geminiApiKey: string; geminiModel: string };
+  rateLimiter?: RateLimiter;
 }
 
 export interface PipelineHttpResult {
   status: number;
   body: SummarizeSuccessResponse | ApiErrorResponse;
+  headers?: Record<string, string>;
 }
 
 export async function executeSummarizePipeline(params: {
   rawUrl: string;
   headerKey?: string;
+  /** Client identifier for rate limiting (usually the IP address). */
+  clientId?: string;
   signal?: AbortSignal;
   deps?: SummarizePipelineDeps;
 }): Promise<PipelineHttpResult> {
@@ -56,6 +81,16 @@ export async function executeSummarizePipeline(params: {
     };
   }
 
+  const limiter = deps.rateLimiter ?? defaultRateLimiter;
+  const limit = limiter.check(params.clientId ?? "unknown");
+  if (!limit.allowed) {
+    return {
+      status: 429,
+      body: rateLimitedBody(limit.retryAfterSeconds),
+      headers: { "Retry-After": String(limit.retryAfterSeconds) },
+    };
+  }
+
   const { geminiApiKey, geminiModel } = getConfig();
   const apiKey = (params.headerKey ?? "").trim() || geminiApiKey;
 
@@ -64,10 +99,14 @@ export async function executeSummarizePipeline(params: {
 
     let summary: SummaryResult;
     let activeModel = geminiModel;
+    let provider: SummaryProvider = "gemini";
+    let notice: string | undefined;
 
     if (!apiKey) {
       summary = summarizeWithExtractiveNlp(page);
-      activeModel = "extractive-nlp (free)";
+      activeModel = EXTRACTIVE_MODEL_LABEL;
+      provider = "extractive";
+      notice = fallbackNotice("no-key");
     } else {
       try {
         summary = await summarize(page, apiKey, geminiModel, params.signal);
@@ -78,9 +117,12 @@ export async function executeSummarizePipeline(params: {
         ) {
           throw aiError;
         }
-        // Seamless zero-cost fallback when API key is expired/revoked or free-tier quota is exhausted
+        // Zero-cost fallback when the key is revoked or the free-tier quota is used up.
+        // The UI shows `notice` so the user knows this brief did not come from Gemini.
         summary = summarizeWithExtractiveNlp(page);
-        activeModel = "extractive-nlp (free)";
+        activeModel = EXTRACTIVE_MODEL_LABEL;
+        provider = "extractive";
+        notice = fallbackNotice(aiError);
       }
     }
 
@@ -103,7 +145,9 @@ export async function executeSummarizePipeline(params: {
         summary,
         meta: {
           model: activeModel,
+          provider,
           durationMs: Date.now() - startedAt,
+          ...(notice ? { notice } : {}),
         },
       },
     };

@@ -1,5 +1,8 @@
 import type { PageContent, SummaryResult } from "../types/summary.js";
 
+/** Label shown in the UI when the offline extractive summariser produced the brief. */
+export const EXTRACTIVE_MODEL_LABEL = "extractive-nlp (free)";
+
 const STOP_WORDS = new Set([
   "about", "above", "after", "again", "against", "all", "also", "am", "an", "and",
   "any", "are", "aren", "as", "at", "be", "because", "been", "before", "being",

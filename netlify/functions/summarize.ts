@@ -1,6 +1,19 @@
 import { executeSummarizePipeline } from "../../server/services/pipeline.js";
 
-export default async function handler(req: Request): Promise<Response> {
+interface NetlifyContext {
+  ip?: string;
+}
+
+function clientIdFrom(req: Request, context?: NetlifyContext): string {
+  return (
+    context?.ip ||
+    req.headers.get("x-nf-client-connection-ip") ||
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown"
+  );
+}
+
+export default async function handler(req: Request, context?: NetlifyContext): Promise<Response> {
   if (req.method !== "POST") {
     return Response.json(
       { error: { code: "METHOD_NOT_ALLOWED", message: "Use POST /api/summarize." } },
@@ -27,11 +40,12 @@ export default async function handler(req: Request): Promise<Response> {
   const result = await executeSummarizePipeline({
     rawUrl,
     headerKey,
+    clientId: clientIdFrom(req, context),
     signal: req.signal,
   });
 
   return Response.json(result.body, {
     status: result.status,
-    headers: { "Cache-Control": "no-store" },
+    headers: { "Cache-Control": "no-store", ...result.headers },
   });
 }

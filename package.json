@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "SnapRead — AI-driven website summarizer powered by React, Express, and Gemini",
+  "description": "SnapRead — AI-driven website summariser built with React, TypeScript, Express and Google Gemini",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -15,10 +15,17 @@
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "start": "node dist-server/index.js",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.netlify.json",
-    "test": "tsx --test tests/*.test.ts"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.netlify.json && tsc -p tsconfig.e2e.json",
+    "test": "tsx --test tests/*.test.ts",
+    "test:coverage": "tsx --test --experimental-test-coverage --test-coverage-include=\"server/**\" --test-coverage-include=\"netlify/**\" --test-reporter=spec tests/*.test.ts",
+    "test:e2e": "playwright test --project=chromium --project=mobile-chrome",
+    "test:e2e:all": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
     "@google/genai": "^3.4.0",
     "cheerio": "^1.2.0",
     "dotenv": "^18.0.10",
@@ -28,14 +35,17 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.63.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
     "concurrently": "^10.0.7",
+    "playwright-core": "^1.63.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vite": "^8.3.8"
+    "vite": "^6.2.7"
   }
 }

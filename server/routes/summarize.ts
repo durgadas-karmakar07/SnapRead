@@ -31,10 +31,12 @@ export function createSummarizeRouter(deps: SummarizeRouterDeps = {}) {
     const result = await executeSummarizePipeline({
       rawUrl,
       headerKey,
+      clientId: req.ip,
       signal: abortController.signal,
       deps,
     });
 
+    if (result.headers) res.set(result.headers);
     res.status(result.status).json(result.body);
   });
 

@@ -17,6 +17,8 @@ export interface SummaryResult {
   readingTimeMinutes: number;
 }
 
+export type SummaryProvider = "gemini" | "extractive";
+
 export interface SummarizeSuccessResponse {
   page: {
     url: string;
@@ -29,7 +31,10 @@ export interface SummarizeSuccessResponse {
   summary: SummaryResult;
   meta: {
     model: string;
+    provider: SummaryProvider;
     durationMs: number;
+    /** Set when the brief came from the offline fallback instead of Gemini. */
+    notice?: string;
   };
 }
 

@@ -199,7 +199,8 @@ export function App() {
           {keyMissingOnServer && !error ? (
             <div className="setup-hint-bar">
               <p className="setup-hint-text">
-                <code>GEMINI_API_KEY</code> is not configured in the server environment yet.{" "}
+                No <code>GEMINI_API_KEY</code> on the server, so briefs use the built-in offline
+                summariser.{" "}
                 <button
                   type="button"
                   className="inline-link-btn"
@@ -207,7 +208,7 @@ export function App() {
                   aria-controls="quick-key-drawer"
                   onClick={() => setShowKeyDrawer((prev) => !prev)}
                 >
-                  {showKeyDrawer ? "Hide session key input" : "Use a session key"}
+                  {showKeyDrawer ? "Hide session key input" : "Use a Gemini key for this session"}
                 </button>
               </p>
               {showKeyDrawer ? (
